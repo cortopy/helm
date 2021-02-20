@@ -23,10 +23,22 @@ spec:
       serviceAccountName: {{ include "erpnext.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      containers:
-        - name: {{ .Chart.Name }}-assets
+      initContainers:
+        - name: frappe-bench-ownership
+          image: quay.io/libpod/alpine:3.2
+          imagePullPolicy: {{ .Values.nginxImage.pullPolicy }}
+          command: ['sh', '-c']
+          args: ['chown -R 1000:1000 /home/frappe/frappe-bench']
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            capabilities:
+              add: ["CAP_CHOWN"]
+          volumeMounts:
+            - name: sites-dir
+              mountPath: /home/frappe/frappe-bench/sites
+            - name: logs
+              mountPath: /home/frappe/frappe-bench/logs
+      containers:
+        - name: {{ .Chart.Name }}-nginx
           image: "{{ .Values.nginxImage.repository }}:{{ .Values.nginxImage.tag }}"
           volumeMounts:
           - name: assets-cache
@@ -36,28 +48,28 @@ spec:
           imagePullPolicy: {{ .Values.nginxImage.pullPolicy }}
           env:
             - name: "FRAPPE_PY"
-              value: "0.0.0.0"
+              value: "127.0.0.1"
             - name: "FRAPPE_PY_PORT"
               value: {{ .Values.frappePyPort | quote }}
             - name: "FRAPPE_SOCKETIO"
               value: {{ template "erpnext.fullname" . }}-socketio
             - name: "SOCKETIO_PORT"
-              value: {{ .Values.socketIOPort | quote }}
+              value: {{ .Values.socketIOService.port | quote }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
               protocol: TCP
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
         - name: {{ .Chart.Name }}-python
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.pythonImage.repository }}:{{ .Values.pythonImage.tag }}"
           volumeMounts:
           - name: assets-cache
             mountPath: /home/frappe/frappe-bench/sites/assets
           - name: sites-dir
             mountPath: /home/frappe/frappe-bench/sites
+          - name: logs
+            mountPath: /home/frappe/frappe-bench/logs
           imagePullPolicy: {{ .Values.pythonImage.pullPolicy }}
           env:
             - name: "MARIADB_HOST"
@@ -98,13 +110,29 @@ spec:
         - name: assets-cache
           emptyDir: {}
         - name: sites-dir
+          {{- if .Values.persistence.worker.enabled }}
           persistentVolumeClaim:
-            {{- if .Values.persistence.existingClaim }}
-            claimName: {{ .Values.persistence.existingClaim }}
+            {{- if .Values.persistence.worker.existingClaim }}
+            claimName: {{ .Values.persistence.worker.existingClaim }}
             {{- else }}
             claimName: {{ template "erpnext.fullname" . }}
             {{- end }}
             readOnly: false
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: logs
+          {{- if .Values.persistence.logs.enabled }}
+          persistentVolumeClaim:
+            {{- if .Values.persistence.logs.existingClaim }}
+            claimName: {{ .Values.persistence.logs.existingClaim }}
+            {{- else }}
+            claimName: {{ template "erpnext.fullname" . }}-logs
+            {{- end }}
+            readOnly: false
+          {{- else }}
+          emptyDir: {}
+          {{- end }}       
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -19,9 +19,18 @@ socketIOImage:
   tag: v12.14.0
   pullPolicy: IfNotPresent
 
+redis:
+  image:
+    repository: bitnami/redis
+    tag: 5.0.10-debian-10-r105
+    pullPolicy: IfNotPresent
+  extraEnv:
+    - name: ALLOW_EMPTY_PASSWORD
+      value: "yes"
+
 # Asset Image Env Variables
 frappePyPort: "8000"
-socketIOPort: "9000"
+socketIOPort: "8000"
 
 # Python Image Env Variables
 # mariadbHost: "mariadb.mariadb.svc.cluster.local"
@@ -65,7 +74,7 @@ service:
 # Additional Services
 socketIOService:
   type: ClusterIP
-  port: 9000
+  port: 8000
 
 redisSocketIOService:
   type: ClusterIP
@@ -80,10 +89,16 @@ redisCacheService:
   port: 13000
 
 persistence:
-  enabled: true
-  # existingClaim: ""
-  size: 8Gi
-  # storageClass: "nfs"
+  worker:
+    enabled: true
+    # existingClaim: ""
+    size: 8Gi
+    # storageClass: "nfs"
+  logs:
+    enabled: true
+    # existingClaim: ""
+    size: 8Gi
+    # storageClass: "nfs"
 
 resources: {}
   # If you do want to specify resources, uncomment the following
@@ -100,3 +115,5 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+sites: []

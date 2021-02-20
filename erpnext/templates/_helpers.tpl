@@ -31,11 +31,17 @@ Create chart name and version as used by the chart label.
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+
 {{/*
 Common labels
 */}}
-{{- define "erpnext.labels" -}}
+{{- define "erpnext.commonLabels" -}}
 helm.sh/chart: {{ include "erpnext.chart" . }}
+{{- end -}}
+
+
+{{- define "erpnext.labels" -}}
+{{ include "erpnext.commonLabels" . }}
 {{ include "erpnext.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
