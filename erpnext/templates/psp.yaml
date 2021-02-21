@@ -6,7 +6,7 @@ metadata:
     apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
     seccomp.security.alpha.kubernetes.io/defaultProfileName:  'runtime/default'
     apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
-  name: erpnext
+  name: erpnext-{{ .Release.Namespace }}
 spec:
   readOnlyRootFilesystem: false
   privileged: false
@@ -48,7 +48,7 @@ rules:
   - apiGroups:
       - policy
     resourceNames:
-      - erpnext
+      - erpnext-{{ .Release.Namespace }}
     resources:
       - podsecuritypolicies
     verbs:
