@@ -23,6 +23,7 @@ spec:
       serviceAccountName: {{ include "erpnext.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and .Values.volumePermissions.enabled .Values.persistence.worker.enabled }}
       initContainers:
         - name: frappe-bench-ownership
           image: quay.io/libpod/alpine:3.2
@@ -37,6 +38,7 @@ spec:
               mountPath: /home/frappe/frappe-bench/sites
             - name: logs
               mountPath: /home/frappe/frappe-bench/logs
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}-nginx
           image: "{{ .Values.nginxImage.repository }}:{{ .Values.nginxImage.tag }}"
@@ -144,7 +146,7 @@ spec:
             readOnly: false
           {{- else }}
           emptyDir: {}
-          {{- end }}       
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

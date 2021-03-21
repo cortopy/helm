@@ -1,4 +1,4 @@
-{{- if ne .Release.IsInstall true -}}
+{{- if eq .Release.IsInstall false -}}
 {{- if .Values.migrateJob.enable }}
 apiVersion: batch/v1
 kind: Job
@@ -17,7 +17,7 @@ spec:
         imagePullPolicy: IfNotPresent
         command: ["/bin/bash", "-c"]
         securityContext:
-          runAsUser: 1000
+          runAsUser: 1000 # same as erpnext user
           runAsGroup: 1000
         args:
           - cp /data/common_site_config.json /data/temp.json;
@@ -57,17 +57,19 @@ spec:
             echo \"Sidecar available. Running the command...\";
             /usr/local/bin/docker-entrypoint.sh migrate;
             x=$(echo $?); curl -fsI -X POST http://localhost:15020/quitquitquit && exit $x
-        securityContext:
-          {{- toYaml $.Values.securityContext | nindent 12 }}
         env:
           - name: "MAINTENANCE_MODE"
             value: "1"
+        securityContext:
+          {{- toYaml $.Values.securityContext | nindent 12 }}
         imagePullPolicy: {{ .Values.pythonImage.pullPolicy }}
         volumeMounts:
           - name: sites-dir
             mountPath: /home/frappe/frappe-bench/sites
           - name: assets-cache
             mountPath: /home/frappe/frappe-bench/sites/assets
+          - name: logs
+            mountPath: /home/frappe/frappe-bench/logs
       restartPolicy: Never
       volumes:
         - name: assets-cache
@@ -79,6 +81,18 @@ spec:
             claimName: {{ .Values.persistence.worker.existingClaim }}
             {{- else }}
             claimName: {{ template "erpnext.fullname" . }}
+            {{- end }}
+            readOnly: false
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: logs
+          {{- if .Values.persistence.logs.enabled }}
+          persistentVolumeClaim:
+            {{- if .Values.persistence.logs.existingClaim }}
+            claimName: {{ .Values.persistence.logs.existingClaim }}
+            {{- else }}
+            claimName: {{ template "erpnext.fullname" . }}-logs
             {{- end }}
             readOnly: false
           {{- else }}
